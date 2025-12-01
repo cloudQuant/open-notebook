@@ -6,6 +6,13 @@ from typing import Any, Dict, List, Optional, TypeVar, Union
 from loguru import logger
 from surrealdb import AsyncSurreal, RecordID  # type: ignore
 
+# 禁用代理以避免 WebSocket 连接问题
+# SurrealDB 使用 WebSocket，代理会导致连接失败
+if "NO_PROXY" not in os.environ:
+    os.environ["NO_PROXY"] = "localhost,127.0.0.1,0.0.0.0,::1"
+elif "localhost" not in os.environ.get("NO_PROXY", ""):
+    os.environ["NO_PROXY"] = f"{os.environ.get('NO_PROXY', '')},localhost,127.0.0.1,0.0.0.0,::1"
+
 T = TypeVar("T", Dict[str, Any], List[Dict[str, Any]])
 
 
@@ -17,8 +24,8 @@ def get_database_url():
 
     # Fallback to old format - WebSocket URL format
     address = os.getenv("SURREAL_ADDRESS", "localhost")
-    port = os.getenv("SURREAL_PORT", "8000")
-    return f"ws://{address}/rpc:{port}"
+    port = os.getenv("SURREAL_PORT", "8001")  # 默认端口改为 8001 避免与常见后端端口冲突
+    return f"ws://{address}:{port}/rpc"
 
 
 def get_database_password():

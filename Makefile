@@ -12,8 +12,12 @@ GHCR_IMAGE := ghcr.io/lfnovo/open-notebook
 # Build platforms
 PLATFORMS := linux/amd64,linux/arm64
 
+# Docker Compose command (prefers docker-compose if available)
+DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo "docker compose"; fi)
+COMPOSE_FILE := docker-compose.dev.yml
+
 database:
-	docker compose up -d surrealdb
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d surrealdb
 
 run:
 	@echo "⚠️  Warning: Starting frontend only. For full functionality, use 'make start-all'"
@@ -117,10 +121,10 @@ tag:
 
 
 dev:
-	docker compose -f docker-compose.dev.yml up --build 
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up --build 
 
 full:
-	docker compose -f docker-compose.full.yml up --build 
+	$(DOCKER_COMPOSE) -f docker-compose.full.yml up --build 
 
 
 api:
@@ -147,7 +151,7 @@ worker-restart: worker-stop
 start-all:
 	@echo "🚀 Starting Open Notebook (Database + API + Worker + Frontend)..."
 	@echo "📊 Starting SurrealDB..."
-	@docker compose up -d surrealdb
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d surrealdb
 	@sleep 3
 	@echo "🔧 Starting API backend..."
 	@uv run run_api.py &
@@ -157,7 +161,7 @@ start-all:
 	@sleep 2
 	@echo "🌐 Starting Next.js frontend..."
 	@echo "✅ All services started!"
-	@echo "📱 Frontend: http://localhost:3000"
+	@echo "📱 Frontend: http://localhost:8502"
 	@echo "🔗 API: http://localhost:5055"
 	@echo "📚 API Docs: http://localhost:5055/docs"
 	cd frontend && npm run dev
@@ -168,13 +172,13 @@ stop-all:
 	@pkill -f "surreal-commands-worker" || true
 	@pkill -f "run_api.py" || true
 	@pkill -f "uvicorn api.main:app" || true
-	@docker compose down
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down
 	@echo "✅ All services stopped!"
 
 status:
 	@echo "📊 Open Notebook Service Status:"
 	@echo "Database (SurrealDB):"
-	@docker compose ps surrealdb 2>/dev/null || echo "  ❌ Not running"
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) ps surrealdb 2>/dev/null || echo "  ❌ Not running"
 	@echo "API Backend:"
 	@pgrep -f "run_api.py\|uvicorn api.main:app" >/dev/null && echo "  ✅ Running" || echo "  ❌ Not running"
 	@echo "Background Worker:"
